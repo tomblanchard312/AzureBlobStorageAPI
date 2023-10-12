@@ -28,8 +28,8 @@ Before using this API, make sure you have the following prerequisites:
 1. Clone this repository to your local machine:
 
    ```bash
-   git clone https://github.com/yourusername/netcore-azure-blob-service-api.git
-   cd netcore-azure-blob-service-api
+   git clone https://github.com/tomblanchard312/NetCoreAzBlobServiceAPI.git
+   cd NetCoreAzBlobServiceAPI
    ```
 
 2. Build the project using the .NET Core CLI:
