@@ -27,8 +27,8 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
         /// </summary>
         private readonly string[] permittedExtensions = { ".txt", ".csv", ".xls", ".xlsx", ".json", ".xml" };
         /// <summary>
-        /// This example is using local storage (node.js) it works for the sample.
-        /// Make sure to go into connected services and ensure that you connect to local storage (node.js) and use "StorageConnection" as the connection string.
+        /// This example is using local storage azurite (node.js) it works for the sample.
+        /// Make sure to go into connected services and ensure that you connect to local storage azureite (node.js) and use "StorageConnection" as the connection string.
         /// To use this with azure storage, the keys are in the appsettings.json file. Point them to your Azure Storage.
         /// Same with Keyvault, edit the keyvault uri, and you can uncomment the dependent lines.
         /// </summary>
@@ -132,7 +132,8 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
                     await _containerClient.CreateAsync().ConfigureAwait(false);
                 }
                 // Generate a unique blob name for the uploaded file
-                string blobName = file.FileName;
+                //if not you will get a file exists error if uploading the same name twice.
+                string blobName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
 
                 // Read and encrypt the file content
                 using (Stream stream = file.OpenReadStream())
@@ -246,7 +247,8 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
                 {
                     return BadRequest("Client ID/Secret Not Found or Invalid.");
                 }
-
+                //this gets or creates a container from client id named clientidblobcontainer.
+                //you could pass it in as a variable if you wish.
                 BlobContainerClient _containerClient = _blobServiceClient.GetBlobContainerClient(ClientID.ToLowerInvariant() + "blobcontainer");
 
                 if (string.IsNullOrEmpty(blobName))
