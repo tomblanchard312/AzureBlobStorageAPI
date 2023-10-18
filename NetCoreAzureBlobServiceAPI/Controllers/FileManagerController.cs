@@ -9,8 +9,10 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 
 using System.Security.Cryptography;
-using NetCoreAzureBlobServiceAPI.Classes;
 using BlobInfo = NetCoreAzureBlobServiceAPI.Classes.BlobInfo;
+using CsvHelper;
+using System.Data;
+using System.Globalization;
 
 namespace NetCoreAzureBlobServiceAPI.Controllers
 {
@@ -27,8 +29,8 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
         /// </summary>
         private readonly string[] permittedExtensions = { ".txt", ".csv", ".xls", ".xlsx", ".json", ".xml" };
         /// <summary>
-        /// This example is using local storage azurite (node.js) it works for the sample.
-        /// Make sure to go into connected services and ensure that you connect to local storage azureite (node.js) and use "StorageConnection" as the connection string.
+        /// This example is using local storage (node.js) it works for the sample.
+        /// Make sure to go into connected services and ensure that you connect to local storage (node.js) and use "StorageConnection" as the connection string.
         /// To use this with azure storage, the keys are in the appsettings.json file. Point them to your Azure Storage.
         /// Same with Keyvault, edit the keyvault uri, and you can uncomment the dependent lines.
         /// </summary>
@@ -40,7 +42,7 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
         {
             _blobServiceClient = blobServiceClient ?? throw new ArgumentNullException(nameof(blobServiceClient));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            /**
+           /**
              * uncomment the following to use with your key vault to make this more secure
              * **/
             //var vaulturi = _configuration.GetValue<string>("vaulturi");
@@ -95,12 +97,13 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
                 return false;
             }
         }
+
         /// <summary>
         /// Uploads a file to Azure Blob Storage.
         /// </summary>
         /// <param name="file">The file to upload.</param>
-        /// <param name="ClientID">ex: MyClientID</param>
-        /// <param name="ClientSecret">ex: MyClientSecet</param>
+        /// <param name="clientId">The client ID to validate.</param>
+        /// <param name="clientSecret">ex: MyClientSecet</param>
         /// <returns>A response with the URL of the uploaded blob.</returns>
         [HttpPost("upload")]
         public async Task<IActionResult> UploadFile(IFormFile file, string clientId, string clientSecret)
@@ -186,23 +189,23 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
             }
         }
         [HttpGet("list")]
-        public IActionResult ListBlobs(string ClientID, string ClientSecret)
+        public IActionResult ListBlobs(string clientId, string clientSecret)
         {
             // Validate the clientID parameter for non-null
-            if (ClientID == null)
+            if (clientId == null)
             {
-                throw new ArgumentNullException(nameof(ClientID), "ClientID cannot be null.");
+                throw new ArgumentNullException(nameof(clientId), "ClientID cannot be null.");
             }
 
             try
             {
                 // Validate the client using the ValidateClient method
-                if (!ValidateClient(ClientID, ClientSecret))
+                if (!ValidateClient(clientId, clientSecret))
                 {
                     return BadRequest("Client ID/Secret Not Found or Invalid.");
                 }
 
-                BlobContainerClient _containerClient = _blobServiceClient.GetBlobContainerClient(ClientID.ToLowerInvariant() + "blobcontainer");
+                BlobContainerClient _containerClient = _blobServiceClient.GetBlobContainerClient(clientId.ToLowerInvariant() + "blobcontainer");
 
                 //List all blobs in the container with their metadata
                 List<BlobInfo> blobInfos = _containerClient
@@ -228,28 +231,27 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
         /// <summary>
         /// Downloads a specific blob from the Azure Blob Storage container.
         /// </summary>
-        /// <param name="ClientID">MyClientID</param>
-        /// <param name="ClientSecret">MyClientSecret</param>
+        /// <param name="clientId">MyClientID</param>
+        /// <param name="clientSecret">MyClientSecret</param>
         /// <param name="blobName">The name of the blob to download.</param>
         /// <returns>The blob's content as a file download response.</returns>
         [HttpGet("download")]
-        public IActionResult DownloadBlob(string ClientID, string ClientSecret, string blobName)
+        public IActionResult DownloadBlob(string clientId, string clientSecret, string blobName)
         {
             // Validate the clientID parameter for non-null
-            if (ClientID == null)
+            if (clientId == null)
             {
-                throw new ArgumentNullException(nameof(ClientID), "ClientID cannot be null.");
+                throw new ArgumentNullException(nameof(clientId), "ClientID cannot be null.");
             }
             try
             {
                 // Validate the client using the ValidateClient method
-                if (!ValidateClient(ClientID, ClientSecret))
+                if (!ValidateClient(clientId, clientSecret))
                 {
                     return BadRequest("Client ID/Secret Not Found or Invalid.");
                 }
-                //this gets or creates a container from client id named clientidblobcontainer.
-                //you could pass it in as a variable if you wish.
-                BlobContainerClient _containerClient = _blobServiceClient.GetBlobContainerClient(ClientID.ToLowerInvariant() + "blobcontainer");
+
+                BlobContainerClient _containerClient = _blobServiceClient.GetBlobContainerClient(clientId.ToLowerInvariant() + "blobcontainer");
 
                 if (string.IsNullOrEmpty(blobName))
                 {
@@ -336,6 +338,81 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
                 return StatusCode(500, $"Internal Server Error: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Reads a CSV blob from Azure Blob Storage and returns its contents as a list of dictionaries.
+        /// </summary>
+        /// <param name="clientId">The client ID for the Blob Container.</param>
+        /// <param name="clientSecret">The client secret to validate the client.</param>
+        /// <param name="blobName">The name of the blob to read.</param>
+        /// <returns>A list of dictionaries representing the CSV data.</returns>
+        [HttpGet("readcsvblob")]
+        public async Task<IActionResult> ReadCsvBlob(string clientId, string clientSecret, string blobName)
+        {
+            if (clientId == null)
+            {
+                throw new ArgumentNullException(nameof(clientId), "ClientID cannot be null.");
+            }
+
+            try
+            {
+                // Validate the client using the ValidateClient method
+                if (!ValidateClient(clientId, clientSecret))
+                {
+                    return BadRequest("Client ID/Secret Not Found or Invalid.");
+                }
+
+                // Get the BlobContainerClient for the specified client
+                BlobContainerClient containerClient = _blobServiceClient.GetBlobContainerClient(clientId.ToLowerInvariant() + "blobcontainer");
+
+                if (string.IsNullOrEmpty(blobName))
+                {
+                    return BadRequest("Blob name is required.");
+                }
+
+                // Get the BlobClient for the specified blob
+                BlobClient blobClient = containerClient.GetBlobClient(blobName);
+
+                if (!await blobClient.ExistsAsync())
+                {
+                    return NotFound($"Blob '{blobName}' not found.");
+                }
+
+                using var blobStreamClient = await blobClient.OpenReadAsync();
+                using var streamReader = new StreamReader(blobStreamClient);
+                using var csv = new CsvReader(streamReader, new CsvHelper.Configuration.CsvConfiguration(CultureInfo.CurrentCulture));
+                using var dr = new CsvDataReader(csv);
+                var data = new List<Dictionary<string, object>>();
+                while (dr.Read())
+                {
+                    var rowData = new Dictionary<string, object>();
+                    for (var i = 0; i < dr.FieldCount; i++)
+                    {
+                        rowData[dr.GetName(i)] = dr.GetValue(i);
+                    }
+                    data.Add(rowData);
+                }
+
+                if (data.Count == 0)
+                {
+                    return NotFound("Blob is empty.");
+                }
+
+                return Ok(data);
+            }
+            catch (RequestFailedException ex) // Azure Storage-related errors
+            {
+                return StatusCode(403, $"Access to Azure Blob Storage denied: {ex.Message}");
+            }
+            catch (HttpRequestException ex) // HTTP errors
+            {
+                return StatusCode(503, $"HTTP request error: {ex.Message}");
+            }
+            catch (Exception ex) // Generic catch-all for other unexpected errors
+            {
+                return StatusCode(500, $"Internal Server Error: {ex.Message}");
+            }
+        }
+
     }
 }
 

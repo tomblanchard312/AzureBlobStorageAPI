@@ -1,12 +1,17 @@
+using Azure.Identity;
 using Azure.Storage.Blobs;
-
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption;
 using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel;
 using Microsoft.AspNetCore.Rewrite;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Azure;
-using Azure.Identity;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using NetCoreAzureBlobServiceAPI.Classes;
 
 var builder = WebApplication.CreateBuilder(args);
 /**
@@ -28,24 +33,26 @@ var builder = WebApplication.CreateBuilder(args);
 //    config.AddPolicy("AuthZPolicy", policyBuilder =>
 //        policyBuilder.Requirements.Add(new ScopeAuthorizationRequirement() { RequiredScopesConfigurationKey = $"AzureAd:Scopes" }));
 //});
-
+// Configure Data Protection
 builder.Services.AddDataProtection()
     .UseCryptographicAlgorithms(new AuthenticatedEncryptorConfiguration()
     {
         EncryptionAlgorithm = EncryptionAlgorithm.AES_256_GCM,
         ValidationAlgorithm = ValidationAlgorithm.HMACSHA256
     });
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+// Configure Azure Clients
 builder.Services.AddAzureClients(clientBuilder =>
 {
     clientBuilder.AddBlobServiceClient(builder.Configuration["StorageConnection:blob"], preferMsi: true);
     clientBuilder.AddQueueServiceClient(builder.Configuration["StorageConnection:queue"], preferMsi: true);
     clientBuilder.UseCredential(new DefaultAzureCredential());
 });
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
+// Configure Controllers
+builder.Services.AddControllers();
+
+// Configure Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -53,7 +60,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Version = "v1",
         Title = "Net Core Blob Service API",
-        Description = "An API that allows you to upload/list/download files from Azure Blob Storage",
+        Description = "An API that allows you to upload/list/download/read files from Azure Blob Storage",
         Contact = new OpenApiContact
         {
             Name = "Tom Blanchard",
@@ -63,26 +70,37 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
-app.UseSwagger();
-app.UseStaticFiles();
-app.UseSwaggerUI(c =>
-{
-    c.SwaggerEndpoint("./v1/swagger.json", "File and String Managements");
-});
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    // Development Exception Page
+    app.UseDeveloperExceptionPage();
+    // Swagger UI for Development
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Blob File Management");
+    });
 }
+else
+{
+    // Exception Handling for Production
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+// HTTPS Redirection
+app.UseHttpsRedirection();
+// Static Files (e.g., Swagger UI)
+app.UseStaticFiles();
+// Routing
 app.UseRouting();
+//force redirect to swagger, helps if you are publishing to azure PaaS.
 var option = new RewriteOptions();
 option.AddRedirect("^$", "swagger");
-app.UseHttpsRedirection();
-
+// Authorization
 app.UseAuthorization();
-
+// Map Controllers
 app.MapControllers();
 
 app.Run();
