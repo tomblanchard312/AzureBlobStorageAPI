@@ -107,5 +107,5 @@ Contributions to this project are welcome. If you have improvements or feature a
 
 ## License
 
-This project is licensed under the [Apache 2.0 License](https://github.com/yourusername/NetCoreAzureBlobServiceAPI/blob/main/LICENSE) and the [Microsoft Open Source License](https://opensource.microsoft.com/licenses/ms-pl).
+This project is licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0.html) and the [Microsoft Open Source License](https://opensource.org/license/ms-pl-html/).
 
