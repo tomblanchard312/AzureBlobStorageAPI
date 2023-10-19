@@ -107,6 +107,5 @@ Contributions to this project are welcome. If you have improvements or feature a
 
 ## License
 
-This project is released under the Unlicense - see the [UNLICENSE](UNLICENSE) file for details.
+This project is licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0.html) and the [Microsoft Open Source License](https://opensource.org/license/ms-pl-html/).
 
-The Unlicense is a public domain dedication, which means you can use the code in this repository without any restrictions or requirements.
