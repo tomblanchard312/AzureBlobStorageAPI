@@ -28,7 +28,7 @@ Before using this API, make sure you have the following prerequisites:
 1. Clone this repository to your local machine:
 
    ```bash
-   git https://github.com/tomblanchard312/NetCoreAzBlobServiceAPI.git
+   git clone https://github.com/tomblanchard312/NetCoreAzBlobServiceAPI.git
    cd NetCoreAzBlobServiceAPI
    ```
 
