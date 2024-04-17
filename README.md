@@ -105,7 +105,5 @@ This API provides options for securing your data:
 
 Contributions to this project are welcome. If you have improvements or feature additions, please create a pull request.
 
-## License
 
-This project is licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0.html) and the [Microsoft Open Source License](https://opensource.org/license/ms-pl-html/).
 
