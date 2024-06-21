@@ -1,23 +1,28 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>80622f60-2105-4e8c-98e3-a7c31e521c13</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
-
+  <ItemGroup>
+    <Compile Remove="Classes\**" />
+    <Content Remove="Classes\**" />
+    <EmbeddedResource Remove="Classes\**" />
+    <None Remove="Classes\**" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.11.3" />
     <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.6.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.20.0" />
-     <PackageReference Include="Azure.Storage.Files.Shares" Version="12.18.0" />
+    <PackageReference Include="Azure.Storage.Files.Shares" Version="12.18.0" />
     <PackageReference Include="Azure.Storage.Queues" Version="12.18.0" />
     <PackageReference Include="CsvHelper" Version="32.0.3" />
     <PackageReference Include="Microsoft.Extensions.Azure" Version="1.7.3" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.20.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
-
+  <ItemGroup>
+    <Folder Include="Models\" />
+  </ItemGroup>
 </Project>

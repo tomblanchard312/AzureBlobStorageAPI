@@ -105,8 +105,4 @@ This API provides options for securing your data:
 
 Contributions to this project are welcome. If you have improvements or feature additions, please create a pull request.
 
-## License
 
-This project is released under the Unlicense - see the [UNLICENSE](UNLICENSE) file for details.
-
-The Unlicense is a public domain dedication, which means you can use the code in this repository without any restrictions or requirements.
