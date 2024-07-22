@@ -1,19 +1,24 @@
 # NetCoreAzureBlobServiceAPI
 
+[![Last Commit](https://img.shields.io/github/last-commit/tomblanchard312/golangfilereaderwriter)](https://github.com/tomblanchard312/golangfilereaderwriter/commits/main)
+[![Open Issues](https://img.shields.io/github/issues/tomblanchard312/golangfilereaderwriter)](https://github.com/tomblanchard312/golangfilereaderwriter/issues)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 This repository contains a sample API for uploading, listing, and downloading files to and from Azure Blob Storage. The API is built using .NET Core and leverages Azure SDK libraries for interacting with Azure Blob Storage. Additionally, it provides options for client validation, local storage (Azurite), Azure Storage, and Azure Key Vault for secure access.
 
 ## Table of Contents
 
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-  - [Configuration](#configuration)
-- [Usage](#usage)
-  - [Uploading a File](#uploading-a-file)
-  - [Listing Blobs](#listing-blobs)
-  - [Downloading a Blob](#downloading-a-blob)
-- [Security Considerations](#security-considerations)
-- [Contributing](#contributing)
-- [License](#license)
+- [NetCoreAzureBlobServiceAPI](#netcoreazureblobserviceapi)
+  - [Table of Contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+  - [Getting Started](#getting-started)
+    - [Configuration](#configuration)
+  - [Usage](#usage)
+    - [Uploading a File](#uploading-a-file)
+    - [Listing Blobs](#listing-blobs)
+    - [Downloading a Blob](#downloading-a-blob)
+  - [Security Considerations](#security-considerations)
+  - [Contributing](#contributing)
 
 ## Prerequisites
 
@@ -104,6 +109,3 @@ This API provides options for securing your data:
 ## Contributing
 
 Contributions to this project are welcome. If you have improvements or feature additions, please create a pull request.
-
-
-
