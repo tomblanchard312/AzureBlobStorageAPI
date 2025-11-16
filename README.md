@@ -1,111 +1,112 @@
-# NetCoreAzureBlobServiceAPI
 
-[![Last Commit](https://img.shields.io/github/last-commit/tomblanchard312/golangfilereaderwriter)](https://github.com/tomblanchard312/golangfilereaderwriter/commits/main)
-[![Open Issues](https://img.shields.io/github/issues/tomblanchard312/golangfilereaderwriter)](https://github.com/tomblanchard312/golangfilereaderwriter/issues)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# Azure Blob Storage API
 
-This repository contains a sample API for uploading, listing, and downloading files to and from Azure Blob Storage. The API is built using .NET Core and leverages Azure SDK libraries for interacting with Azure Blob Storage. Additionally, it provides options for client validation, local storage (Azurite), Azure Storage, and Azure Key Vault for secure access.
+<p align="center">
+
+  <img alt=".NET" src="https://img.shields.io/badge/.NET-8.0-blue?logo=dotnet" />
+  <img alt="Azure" src="https://img.shields.io/badge/Azure-Blob%20Storage-blue?logo=microsoftazure" />
+  <img alt="Azurite" src="https://img.shields.io/badge/Local%20Emulator-Azurite-blueviolet?logo=microsoftazure" />
+  <img alt="Key Vault" src="https://img.shields.io/badge/Key%20Vault-Optional-green?logo=microsoftazure" />
+  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg" />
+</p>
+
+<p align="center">
+
+  <a href="https://github.com/tomblanchard312/AzureBlobStorageAPI/actions/workflows/dotnet-build-test.yml"><img src="https://github.com/tomblanchard312/AzureBlobStorageAPI/actions/workflows/dotnet-build-test.yml/badge.svg" alt="Build Status" /></a>
+  <a href="https://github.com/tomblanchard312/AzureBlobStorageAPI/issues"><img src="https://img.shields.io/github/issues/tomblanchard312/AzureBlobStorageAPI" alt="Open Issues" /></a>
+  <a href="https://github.com/tomblanchard312/AzureBlobStorageAPI/blob/master/LICENSE"><img src="https://img.shields.io/github/license/tomblanchard312/AzureBlobStorageAPI" alt="License" /></a>
+</p>
+
+---
+
+**A modern .NET Core Web API for uploading, listing, and downloading files to Azure Blob Storage.**
+
+Features:
+
+- Upload, list, and download files via REST endpoints
+- Supports Azure Blob Storage and local Azurite emulator
+- Optional Azure Key Vault integration for secrets and client validation
+- Secure file extension validation and client authentication
+- Container-ready (Dockerfile included)
+
+
 
 ## Table of Contents
 
-- [NetCoreAzureBlobServiceAPI](#netcoreazureblobserviceapi)
-  - [Table of Contents](#table-of-contents)
-  - [Prerequisites](#prerequisites)
-  - [Getting Started](#getting-started)
-    - [Configuration](#configuration)
-  - [Usage](#usage)
-    - [Uploading a File](#uploading-a-file)
-    - [Listing Blobs](#listing-blobs)
-    - [Downloading a Blob](#downloading-a-blob)
-  - [Security Considerations](#security-considerations)
-  - [Contributing](#contributing)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Configuration](#configuration)
+- [API Usage](#api-usage)
+- [Security](#security)
+- [Testing](#testing)
+- [Contributing](#contributing)
+
 
 ## Prerequisites
 
-Before using this API, make sure you have the following prerequisites:
+- [.NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
+- Azure account with Blob Storage access
+- (Optional) Azure Key Vault for secrets
 
-- .NET Core SDK
-- An Azure account with access to Azure Blob Storage
-- (Optional) Azure Key Vault for added security
 
 ## Getting Started
 
-1. Clone this repository to your local machine:
+```bash
+git clone https://github.com/tomblanchard312/AzureBlobStorageAPI.git
+cd AzureBlobStorageAPI/NetCoreAzureBlobServiceAPI
+dotnet build
+dotnet run
+```
 
-   ```bash
-   git clone https://github.com/tomblanchard312/NetCoreAzBlobServiceAPI.git
-   cd NetCoreAzBlobServiceAPI
-   ```
 
-2. Build the project using the .NET Core CLI:
+## Configuration
 
-   ```bash
-   dotnet build
-   ```
+- **Blob Storage**: Set your Azure connection string in `appsettings.json`. For local dev, use Azurite (see `azurite/` folder).
+- **Key Vault**: Uncomment Key Vault code and set URI in `appsettings.json` for secure secrets.
+- **Allowed Extensions**: Update `permittedExtensions` in `Controllers/FileManagerController.cs` to restrict file types.
 
-3. Run the application:
 
-   ```bash
-   dotnet run
-   ```
+## API Usage
 
-### Configuration
+### Upload File
 
-The API can be configured in various ways, depending on your requirements. Here are some key configuration options:
+`POST /api/FileManager/upload`
 
-- **Azure Blob Storage**: To use Azure Blob Storage, provide the necessary connection string in the `appsettings.json` file. Alternatively, you can use local storage (Azurite) for testing.
+- `file`: File to upload
+- `clientId`, `clientSecret`: Credentials
+→ Returns: Blob URL
 
-- **Azure Key Vault (Optional)**: If you choose to use Azure Key Vault for added security, you can uncomment the related code and configure the Key Vault URI in the `appsettings.json` file.
+### List Blobs
 
-- **Allowed File Extensions**: You can define the allowed file extensions by modifying the `permittedExtensions` array in the `FileManagerController` class.
+`GET /api/FileManager/list`
 
-## Usage
+- `clientId`, `clientSecret`: Credentials
 
-The API provides the following endpoints:
+→ Returns: List of blobs (name, date)
 
-### Uploading a File
+### Download Blob
+`GET /api/FileManager/download`
 
-Upload a file to Azure Blob Storage.
+- `clientId`, `clientSecret`: Credentials
+- `blobName`: Blob to download
 
-- **URL**: `/api/FileManager/upload`
-- **Method**: `POST`
-- **Parameters**:
-  - `file` (file): The file to upload.
-  - `clientId` (string): Your client ID.
-  - `clientSecret` (string): Your client secret.
-- **Response**: The URL of the uploaded blob.
+→ Returns: File download
 
-### Listing Blobs
 
-List all blobs in your Azure Blob Storage container.
+## Security
 
-- **URL**: `/api/FileManager/list`
-- **Method**: `GET`
-- **Parameters**:
-  - `clientId` (string): Your client ID.
-  - `clientSecret` (string): Your client secret.
-- **Response**: A list of blob information, including names and creation dates.
+- **Client Validation**: Use `clientId`/`clientSecret` (optionally via Key Vault)
+- **Data Protection**: DPAPI and Key Vault supported for encryption (optional)
 
-### Downloading a Blob
+## Testing
 
-Download a specific blob from the Azure Blob Storage container.
+Unit tests are in `NetCoreAzureBlobServiceAPI/tests/` using xUnit and Moq.
 
-- **URL**: `/api/FileManager/download`
-- **Method**: `GET`
-- **Parameters**:
-  - `clientId` (string): Your client ID.
-  - `clientSecret` (string): Your client secret.
-  - `blobName` (string): The name of the blob to download.
-- **Response**: The blob's content as a file download response.
+```bash
+dotnet test NetCoreAzureBlobServiceAPI/tests/
+```
 
-## Security Considerations
-
-This API provides options for securing your data:
-
-- **Client Validation**: You can validate clients using the provided `clientId` and `clientSecret`. Uncomment the related code to utilize Azure Key Vault for secure client validation.
-
-- **Data Protection**: If needed, you can encrypt and decrypt the file content using DPAPI and Key Vault. Be cautious when implementing encryption, as it adds an extra layer of complexity.
 
 ## Contributing
 
-Contributions to this project are welcome. If you have improvements or feature additions, please create a pull request.
+Contributions are welcome! Please open issues or submit pull requests for improvements.
