@@ -31,6 +31,7 @@ Features:
 
 
 
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
@@ -38,7 +39,6 @@ Features:
 - [Configuration](#configuration)
 - [API Usage](#api-usage)
 - [Security](#security)
-- [Testing](#testing)
 - [Contributing](#contributing)
 
 
@@ -97,14 +97,6 @@ dotnet run
 
 - **Client Validation**: Use `clientId`/`clientSecret` (optionally via Key Vault)
 - **Data Protection**: DPAPI and Key Vault supported for encryption (optional)
-
-## Testing
-
-Unit tests are in `NetCoreAzureBlobServiceAPI/tests/` using xUnit and Moq.
-
-```bash
-dotnet test NetCoreAzureBlobServiceAPI/tests/
-```
 
 
 ## Contributing
