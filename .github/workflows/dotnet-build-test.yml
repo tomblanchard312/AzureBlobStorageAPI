@@ -1,61 +1,30 @@
-  codeql:
-    name: "CodeQL Analysis"
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    strategy:
-      fail-fast: true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: csharp
-      - name: Restore dependencies
-        run: dotnet restore NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj
-      - name: Build project (manual)
-        run: dotnet build NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj --configuration Release
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-
-
-name: .NET Build & Test
+name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  build:
+  build-test-format:
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: true
       matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-        dotnet-version:
-          - 8.0.x
-          - 7.0.x
+        os: [ ubuntu-latest, windows-latest ]
+        dotnet: [ 8.0.x ]
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ matrix.dotnet-version }}
+          dotnet-version: ${{ matrix.dotnet }}
 
       - name: Cache NuGet packages
         uses: actions/cache@v4
@@ -65,43 +34,55 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
-      - name: Restore dependencies
+      - name: Restore
         run: dotnet restore NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj
+
+      - name: Install dotnet-format
+        run: dotnet tool install -g dotnet-format
+
+      - name: Add dotnet tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      - name: Install ReportGenerator
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: Format (verify only)
+        run: dotnet format NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj --verify-no-changes
 
       - name: Build
         run: dotnet build NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj --no-restore --configuration Release
 
-      - name: Test
-        run: dotnet test NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+      - name: Test with Coverage
+        run: dotnet test NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: NetCoreAzureBlobServiceAPI/TestResults/**/coverage.cobertura.xml
+          flags: unittests
+          fail_ci_if_error: true
+
+
+      - name: Generate Coverage Report
+        run: |
+          reportgenerator \
+            -reports:"NetCoreAzureBlobServiceAPI/TestResults/**/coverage.cobertura.xml" \
+            -targetdir:"NetCoreAzureBlobServiceAPI/TestResults/CoverageReport" \
+            -reporttypes:"TextSummary;Html"
+
+      - name: Append Coverage Summary
+        run: |
+          if [ -f NetCoreAzureBlobServiceAPI/TestResults/CoverageReport/Summary.txt ]; then
+            echo "## Code Coverage" >> $GITHUB_STEP_SUMMARY
+            cat NetCoreAzureBlobServiceAPI/TestResults/CoverageReport/Summary.txt >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Publish Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ matrix.os }}-${{ matrix.dotnet-version }}
-          path: NetCoreAzureBlobServiceAPI/TestResults/*.trx
-
-  codeql:
-    name: "CodeQL Analysis"
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: csharp
-      - name: Restore dependencies
-        run: dotnet restore NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj
-      - name: Build project (manual)
-        run: dotnet build NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj --configuration Release
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+          name: test-results-${{ matrix.os }}-${{ matrix.dotnet }}-${{ github.run_id }}
+          path: |
+            NetCoreAzureBlobServiceAPI/TestResults/**/*.trx
+            NetCoreAzureBlobServiceAPI/TestResults/**/coverage.cobertura.xml
+            NetCoreAzureBlobServiceAPI/TestResults/CoverageReport/**
