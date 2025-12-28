@@ -19,53 +19,106 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 
+using NetCoreAzureBlobServiceAPI.Exceptions;
+
 namespace NetCoreAzureBlobServiceAPI.Services
 {
-    public class BlobStorageRepository(BlobServiceClient blobServiceClient) : IBlobStorageRepository
+    public class BlobStorageRepository(BlobServiceClient blobServiceClient, ILogger<BlobStorageRepository> logger) : IBlobStorageRepository
     {
         private readonly BlobServiceClient _blobServiceClient = blobServiceClient;
+        private readonly ILogger<BlobStorageRepository> _logger = logger;
 
         public async Task<Stream> DownloadBlobAsync(string containerName, string blobName)
         {
-            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-            var blobClient = containerClient.GetBlobClient(blobName);
+            try
+            {
+                var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+                var blobClient = containerClient.GetBlobClient(blobName);
 
-            var stream = new MemoryStream();
-            await blobClient.DownloadToAsync(stream);
-            stream.Seek(0, SeekOrigin.Begin);
+                _logger.LogDebug("Downloading blob {BlobName} from container {ContainerName}", blobName, containerName);
 
-            return stream;
+                if (!await blobClient.ExistsAsync())
+                {
+                    _logger.LogWarning("Blob {BlobName} not found in container {ContainerName}", blobName, containerName);
+                    throw new BlobNotFoundException(blobName, containerName);
+                }
+
+                var stream = new MemoryStream();
+                await blobClient.DownloadToAsync(stream);
+                stream.Seek(0, SeekOrigin.Begin);
+
+                _logger.LogDebug("Downloaded {ByteCount} bytes from blob {BlobName}", stream.Length, blobName);
+                return stream;
+            }
+            catch (BlobNotFoundException)
+            {
+                throw; // Re-throw to preserve stack trace
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error downloading blob {BlobName} from container {ContainerName}", blobName, containerName);
+                throw new BlobStorageException($"Failed to download blob '{blobName}' from container '{containerName}'.", ex);
+            }
         }
 
         public async Task<string> UploadBlobAsync(IFormFile file, string containerName, string blobName)
         {
-            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-            await containerClient.CreateIfNotExistsAsync();
+            try
+            {
+                var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+                await containerClient.CreateIfNotExistsAsync();
 
-            var blobClient = containerClient.GetBlobClient(blobName);
+                var blobClient = containerClient.GetBlobClient(blobName);
 
-            using var stream = file.OpenReadStream();
-            await blobClient.UploadAsync(stream, true);
+                _logger.LogDebug("Uploading blob {BlobName} to container {ContainerName}", blobName, containerName);
 
-            return blobClient.Uri.ToString();
+                using var stream = file.OpenReadStream();
+                await blobClient.UploadAsync(stream, true);
+
+                _logger.LogDebug("Blob uploaded to {BlobUri}", blobClient.Uri);
+                return blobClient.Uri.ToString();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading blob {BlobName} to container {ContainerName}", blobName, containerName);
+                throw new BlobStorageException($"Failed to upload blob '{blobName}' to container '{containerName}'.", ex);
+            }
         }
 
         public async Task<IEnumerable<Models.BlobInfo>> ListBlobsAsync(string containerName)
         {
-            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-            var blobs = new List<Models.BlobInfo>();
-
-            await foreach (BlobItem blobItem in containerClient.GetBlobsAsync())
+            try
             {
-                var blobClient = containerClient.GetBlobClient(blobItem.Name);
-                blobs.Add(new Models.BlobInfo
-                {
-                    Name = blobItem.Name,
-                    Url = blobClient.Uri.ToString()
-                });
-            }
+                var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+                var blobs = new List<Models.BlobInfo>();
 
-            return blobs;
+                // Check if container exists
+                if (!await containerClient.ExistsAsync())
+                {
+                    _logger.LogInformation("Container {ContainerName} does not exist, returning empty list", containerName);
+                    return blobs;
+                }
+
+                _logger.LogDebug("Listing blobs in container {ContainerName}", containerName);
+
+                await foreach (BlobItem blobItem in containerClient.GetBlobsAsync())
+                {
+                    var blobClient = containerClient.GetBlobClient(blobItem.Name);
+                    blobs.Add(new Models.BlobInfo
+                    {
+                        Name = blobItem.Name,
+                        Url = blobClient.Uri.ToString()
+                    });
+                }
+
+                _logger.LogDebug("Found {BlobCount} blobs in container {ContainerName}", blobs.Count, containerName);
+                return blobs;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error listing blobs in container {ContainerName}", containerName);
+                throw new BlobStorageException($"Failed to list blobs in container '{containerName}'.", ex);
+            }
         }
     }
 }

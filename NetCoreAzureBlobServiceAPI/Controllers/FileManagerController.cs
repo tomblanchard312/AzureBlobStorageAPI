@@ -2,14 +2,17 @@
 //using Azure.Identity;
 //using Azure.Security.KeyVault.Secrets;
 using Microsoft.AspNetCore.Mvc;
-
 using NetCoreAzureBlobServiceAPI.Interfaces;
+using NetCoreAzureBlobServiceAPI.Exceptions;
 
 namespace NetCoreAzureBlobServiceAPI.Controllers
 {
-    public class FileManagerController(IFileManagementService fileManagementService) : ControllerBase
+    [ApiController]
+    [Route("api/[controller]")]
+    public class FileManagerController(IFileManagementService fileManagementService, ILogger<FileManagerController> logger) : ControllerBase
     {
         private readonly IFileManagementService _fileManagementService = fileManagementService;
+        private readonly ILogger<FileManagerController> _logger = logger;
 
         [HttpPost("upload")]
         public async Task<IActionResult> UploadFile(IFormFile file, string clientId, string clientSecret)
@@ -17,19 +20,27 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
             try
             {
                 var blobUri = await _fileManagementService.UploadFileAsync(file, clientId, clientSecret);
-                return Ok(new { BlobUri = blobUri });
+                return Ok(new { BlobUri = blobUri, Message = "File uploaded successfully." });
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized();
+                _logger.LogWarning(ex, "Unauthorized upload attempt");
+                return Unauthorized(new { Error = ex.Message });
             }
-            catch (ArgumentException ex)
+            catch (InvalidFileException ex)
             {
-                return BadRequest(ex.Message);
+                _logger.LogWarning(ex, "Invalid file upload attempt");
+                return BadRequest(new { Error = ex.Message, FileName = ex.FileName });
             }
-            catch (Exception)
+            catch (BlobStorageException ex)
             {
-                return StatusCode(500, "An error occurred while uploading the file.");
+                _logger.LogError(ex, "Blob storage error during upload");
+                return StatusCode(500, new { Error = "An error occurred while uploading the file.", Details = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error during file upload");
+                return StatusCode(500, new { Error = "An unexpected error occurred while uploading the file." });
             }
         }
 
@@ -41,13 +52,20 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
                 var blobs = await _fileManagementService.ListBlobsAsync(clientId, clientSecret);
                 return Ok(blobs);
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized();
+                _logger.LogWarning(ex, "Unauthorized list attempt");
+                return Unauthorized(new { Error = ex.Message });
             }
-            catch (Exception)
+            catch (BlobStorageException ex)
             {
-                return StatusCode(500, "An error occurred while listing the blobs.");
+                _logger.LogError(ex, "Blob storage error during list operation");
+                return StatusCode(500, new { Error = "An error occurred while listing blobs.", Details = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error during blob listing");
+                return StatusCode(500, new { Error = "An unexpected error occurred while listing the blobs." });
             }
         }
 
@@ -59,13 +77,25 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
                 var stream = await _fileManagementService.DownloadBlobAsync(clientId, clientSecret, blobName);
                 return File(stream, "application/octet-stream", blobName);
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized();
+                _logger.LogWarning(ex, "Unauthorized download attempt");
+                return Unauthorized(new { Error = ex.Message });
             }
-            catch (Exception)
+            catch (BlobNotFoundException ex)
             {
-                return StatusCode(500, "An error occurred while downloading the blob.");
+                _logger.LogWarning(ex, "Blob not found");
+                return NotFound(new { Error = ex.Message, BlobName = ex.BlobName, ContainerName = ex.ContainerName });
+            }
+            catch (BlobStorageException ex)
+            {
+                _logger.LogError(ex, "Blob storage error during download");
+                return StatusCode(500, new { Error = "An error occurred while downloading the blob.", Details = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error during blob download");
+                return StatusCode(500, new { Error = "An unexpected error occurred while downloading the blob." });
             }
         }
     }
