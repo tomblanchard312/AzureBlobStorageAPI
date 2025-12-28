@@ -79,7 +79,8 @@ namespace NetCoreAzureBlobServiceAPI.Services
             {
                 var blobs = await _blobStorageRepository.ListBlobsAsync(containerName);
                 var blobList = blobs.ToList();
-                _logger.LogInformation("Listed {BlobCount} blobs from container {ContainerName}", blobList.Count, containerName);
+                var safeContainerNameForLog = containerName.Replace("\r", string.Empty).Replace("\n", string.Empty);
+                _logger.LogInformation("Listed {BlobCount} blobs from container {ContainerName}", blobList.Count, safeContainerNameForLog);
                 return blobList;
             }
             catch (Exception ex) when (ex is not BlobStorageException)
@@ -110,7 +111,8 @@ namespace NetCoreAzureBlobServiceAPI.Services
             try
             {
                 var stream = await _blobStorageRepository.DownloadBlobAsync(containerName, blobName);
-                _logger.LogInformation("Blob {BlobName} downloaded successfully from container {ContainerName}", blobName, containerName);
+                var safeContainerNameForLog = containerName.Replace("\r", string.Empty).Replace("\n", string.Empty);
+                _logger.LogInformation("Blob {BlobName} downloaded successfully from container {ContainerName}", blobName, safeContainerNameForLog);
                 return stream;
             }
             catch (BlobNotFoundException)
