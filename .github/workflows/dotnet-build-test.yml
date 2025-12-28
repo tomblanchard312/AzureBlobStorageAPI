@@ -56,7 +56,10 @@ jobs:
         run: dotnet test NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
 
       - name: Upload coverage to Codecov
+        if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           files: NetCoreAzureBlobServiceAPI/TestResults/**/coverage.cobertura.xml
           flags: unittests
