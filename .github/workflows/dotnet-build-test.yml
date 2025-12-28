@@ -35,7 +35,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Restore
-        run: dotnet restore NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj
+        run: dotnet restore NetCoreAzureBlobServiceAPI.sln
 
       - name: Install dotnet-format
         run: dotnet tool install -g dotnet-format
@@ -47,13 +47,13 @@ jobs:
         run: dotnet tool install -g dotnet-reportgenerator-globaltool
 
       - name: Format (verify only)
-        run: dotnet format NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj --verify-no-changes
+        run: dotnet format NetCoreAzureBlobServiceAPI.sln --verify-no-changes
 
       - name: Build
-        run: dotnet build NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj --no-restore --configuration Release
+        run: dotnet build NetCoreAzureBlobServiceAPI.sln --no-restore --configuration Release
 
       - name: Test with Coverage
-        run: dotnet test NetCoreAzureBlobServiceAPI/NetCoreAzureBlobServiceAPI.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+        run: dotnet test NetCoreAzureBlobServiceAPI.Tests/NetCoreAzureBlobServiceAPI.Tests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
 
       - name: Upload coverage to Codecov
         if: ${{ env.CODECOV_TOKEN != '' }}
@@ -61,7 +61,7 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          files: NetCoreAzureBlobServiceAPI/TestResults/**/coverage.cobertura.xml
+          files: NetCoreAzureBlobServiceAPI.Tests/TestResults/**/coverage.cobertura.xml
           flags: unittests
           fail_ci_if_error: true
 
@@ -69,15 +69,15 @@ jobs:
       - name: Generate Coverage Report
         run: |
           reportgenerator \
-            -reports:"NetCoreAzureBlobServiceAPI/TestResults/**/coverage.cobertura.xml" \
-            -targetdir:"NetCoreAzureBlobServiceAPI/TestResults/CoverageReport" \
+            -reports:"NetCoreAzureBlobServiceAPI.Tests/TestResults/**/coverage.cobertura.xml" \
+            -targetdir:"NetCoreAzureBlobServiceAPI.Tests/TestResults/CoverageReport" \
             -reporttypes:"TextSummary;Html"
 
       - name: Append Coverage Summary
         run: |
-          if [ -f NetCoreAzureBlobServiceAPI/TestResults/CoverageReport/Summary.txt ]; then
+          if [ -f NetCoreAzureBlobServiceAPI.Tests/TestResults/CoverageReport/Summary.txt ]; then
             echo "## Code Coverage" >> $GITHUB_STEP_SUMMARY
-            cat NetCoreAzureBlobServiceAPI/TestResults/CoverageReport/Summary.txt >> $GITHUB_STEP_SUMMARY
+            cat NetCoreAzureBlobServiceAPI.Tests/TestResults/CoverageReport/Summary.txt >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Publish Test Results
@@ -86,6 +86,6 @@ jobs:
         with:
           name: test-results-${{ matrix.os }}-${{ matrix.dotnet }}-${{ github.run_id }}
           path: |
-            NetCoreAzureBlobServiceAPI/TestResults/**/*.trx
-            NetCoreAzureBlobServiceAPI/TestResults/**/coverage.cobertura.xml
-            NetCoreAzureBlobServiceAPI/TestResults/CoverageReport/**
+            NetCoreAzureBlobServiceAPI.Tests/TestResults/**/*.trx
+            NetCoreAzureBlobServiceAPI.Tests/TestResults/**/coverage.cobertura.xml
+            NetCoreAzureBlobServiceAPI.Tests/TestResults/CoverageReport/**
