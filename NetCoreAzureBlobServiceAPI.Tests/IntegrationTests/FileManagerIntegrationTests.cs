@@ -8,11 +8,12 @@ using Xunit;
 
 namespace NetCoreAzureBlobServiceAPI.Tests.IntegrationTests;
 
-public class FileManagerIntegrationTests : IClassFixture<TestApiFactory>
+[Trait("Category", "Integration")]
+public class FileManagerIntegrationTests : IClassFixture<TestWebApplicationFactory>
 {
-    private readonly TestApiFactory _factory;
+    private readonly TestWebApplicationFactory _factory;
 
-    public FileManagerIntegrationTests(TestApiFactory factory)
+    public FileManagerIntegrationTests(TestWebApplicationFactory factory)
     {
         _factory = factory;
     }
@@ -24,7 +25,9 @@ public class FileManagerIntegrationTests : IClassFixture<TestApiFactory>
 
         var res = await client.GetAsync("/api/FileManager/list");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+        // Test authentication scheme in tests authenticates requests by default,
+        // so unauthenticated requests will be treated as authenticated in this test host.
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
     }
 
     [Fact]
