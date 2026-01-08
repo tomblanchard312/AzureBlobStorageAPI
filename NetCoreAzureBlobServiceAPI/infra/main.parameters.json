@@ -1,0 +1,11 @@
+// Parameter file for main.bicep deployment, containing configurable values for the infrastructure
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "appName": { "value": "netcore-blob-api-dev" },
+    "storageAccountName": { "value": "stnetcoreblobdev01" },
+    "apiAppRegistrationName": { "value": "netcore-blob-api-dev-aad" },
+    "consumerAppRegistrationName": { "value": "netcore-blob-api-dev-client" }
+  }
+}

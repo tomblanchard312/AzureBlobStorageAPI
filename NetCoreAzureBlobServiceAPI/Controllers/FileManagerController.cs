@@ -4,22 +4,24 @@
 using Microsoft.AspNetCore.Mvc;
 using NetCoreAzureBlobServiceAPI.Interfaces;
 using NetCoreAzureBlobServiceAPI.Exceptions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace NetCoreAzureBlobServiceAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = "FilesScope")]
     public class FileManagerController(IFileManagementService fileManagementService, ILogger<FileManagerController> logger) : ControllerBase
     {
         private readonly IFileManagementService _fileManagementService = fileManagementService;
         private readonly ILogger<FileManagerController> _logger = logger;
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadFile(IFormFile file, string clientId, string clientSecret)
+        public async Task<IActionResult> UploadFile(IFormFile file)
         {
             try
             {
-                var blobUri = await _fileManagementService.UploadFileAsync(file, clientId, clientSecret);
+                var blobUri = await _fileManagementService.UploadFileAsync(file, User);
                 return Ok(new { BlobUri = blobUri, Message = "File uploaded successfully." });
             }
             catch (UnauthorizedAccessException ex)
@@ -45,11 +47,11 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
         }
 
         [HttpGet("list")]
-        public async Task<IActionResult> ListBlobs(string clientId, string clientSecret)
+        public async Task<IActionResult> ListBlobs()
         {
             try
             {
-                var blobs = await _fileManagementService.ListBlobsAsync(clientId, clientSecret);
+                var blobs = await _fileManagementService.ListBlobsAsync(User);
                 return Ok(blobs);
             }
             catch (UnauthorizedAccessException ex)
@@ -70,11 +72,11 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
         }
 
         [HttpGet("download")]
-        public async Task<IActionResult> DownloadBlob(string clientId, string clientSecret, string blobName)
+        public async Task<IActionResult> DownloadBlob(string blobName)
         {
             try
             {
-                var stream = await _fileManagementService.DownloadBlobAsync(clientId, clientSecret, blobName);
+                var stream = await _fileManagementService.DownloadBlobAsync(blobName, User);
                 return File(stream, "application/octet-stream", blobName);
             }
             catch (UnauthorizedAccessException ex)

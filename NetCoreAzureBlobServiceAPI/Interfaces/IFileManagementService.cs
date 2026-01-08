@@ -1,11 +1,12 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using System.Security.Claims;
 namespace NetCoreAzureBlobServiceAPI.Interfaces
 {
     public interface IFileManagementService
     {
-        Task<string> UploadFileAsync(IFormFile file, string clientId, string clientSecret);
-        Task<IEnumerable<Models.BlobInfo>> ListBlobsAsync(string clientId, string clientSecret);
-        Task<Stream> DownloadBlobAsync(string clientId, string clientSecret, string blobName);
+        Task<string> UploadFileAsync(IFormFile file, ClaimsPrincipal user);
+        Task<IEnumerable<Models.BlobInfo>> ListBlobsAsync(ClaimsPrincipal user);
+        Task<Stream> DownloadBlobAsync(string blobName, ClaimsPrincipal user);
     }
 }

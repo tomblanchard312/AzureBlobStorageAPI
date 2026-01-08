@@ -6,33 +6,38 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Azure.Storage.Blobs;
 using NetCoreAzureBlobServiceAPI.Interfaces;
+using Microsoft.Identity.Web;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Azure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration);
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("FilesScope", policy => policy.RequireClaim("scp", "Files.Manage"));
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Configuration validation
-string blobServiceConnectionString = builder.Configuration.GetConnectionString("AzureBlobStorage") ?? throw new InvalidOperationException("Azure Blob Storage connection string is not configured.");
-string? clientId = builder.Configuration["ClientValidation:ClientId"];
-string? clientSecret = builder.Configuration["ClientValidation:ClientSecret"];
+string accountUri = builder.Configuration["BlobStorage:AccountUri"] ?? throw new InvalidOperationException("Blob Storage account URI is not configured.");
 
-if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
-{
-    throw new InvalidOperationException("ClientValidation:ClientId and ClientValidation:ClientSecret must be configured.");
-}
+var credential = new DefaultAzureCredential();
+var blobServiceClient = new BlobServiceClient(new Uri(accountUri), credential);
 
-builder.Services.AddSingleton(new BlobServiceClient(blobServiceConnectionString));
+builder.Services.AddSingleton(blobServiceClient);
 
 builder.Services.AddSingleton<IFileManagementService, FileManagementService>();
-builder.Services.AddSingleton<IClientValidationService, ClientValidationService>();
 builder.Services.AddSingleton<IBlobStorageRepository, BlobStorageRepository>();
 
 // Add health checks
 builder.Services.AddHealthChecks()
-    .AddAzureBlobStorage(blobServiceConnectionString, name: "azureblob");
+    .AddAzureBlobStorage(new Uri(accountUri), credential, name: "azureblob");
 
 builder.Services.AddLogging(config =>
 {
@@ -50,6 +55,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
