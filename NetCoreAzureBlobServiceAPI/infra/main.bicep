@@ -1,11 +1,12 @@
-// Main deployment file that orchestrates all Azure resources for the .NET Web API infrastructureparam location string = resourceGroup().location
+// Main deployment file that orchestrates all Azure resources for the .NET Web API infrastructure
 param location string = resourceGroup().location
 param appName string
 param storageAccountName string
 param vnetName string = '${appName}-vnet'
 
-param apiAppRegistrationName string
-param consumerAppRegistrationName string
+// Entra ID app registrations are created outside of Bicep and passed in as parameters
+param apiClientId string
+param apiAudience string
 
 // 1) Storage
 module storage 'modules/storageAccount.bicep' = {
@@ -45,25 +46,7 @@ module pe 'modules/privateEndpointBlob.bicep' = {
   }
 }
 
-// 5) Azure AD API app registration
-module aadApi 'modules/aadApiApp.bicep' = {
-  name: 'aadApi'
-  params: {
-    apiAppName: apiAppRegistrationName
-    scopeValue: 'Files.Manage'
-  }
-}
-
-// 6) Consumer app registration
-module aadConsumer 'modules/aadConsumerApp.bicep' = {
-  name: 'aadConsumer'
-  params: {
-    consumerAppName: consumerAppRegistrationName
-    apiAppClientId: aadApi.outputs.apiClientId
-    apiScopeId: aadApi.outputs.scopeId
-    isPublicClient: false
-  }
-}
+// 5) Entra ID app registrations are created outside Bicep. Expect `apiClientId` and `apiAudience` parameters.
 
 // 7) Web App with Managed Identity and app settings
 module app 'modules/appService.bicep' = {
@@ -72,11 +55,10 @@ module app 'modules/appService.bicep' = {
     appName: appName
     location: location
     appSettings: {
-      'BlobStorage__AccountUri': storage.outputs.blobEndpoint
-      'AzureAd__Instance': 'https://login.microsoftonline.com/'
-      'AzureAd__TenantId': '<tenant-id>'
-      'AzureAd__ClientId': aadApi.outputs.apiClientId
-      'AzureAd__Audience': aadApi.outputs.apiIdentifierUri
+      BlobStorage__AccountUri: storage.outputs.blobEndpoint
+      AzureAd__Instance: environment().authentication.loginEndpoint
+      AzureAd__ClientId: apiClientId
+      AzureAd__Audience: apiAudience
     }
   }
 }
@@ -85,11 +67,9 @@ module app 'modules/appService.bicep' = {
 module rbac 'modules/rbacBlobContributor.bicep' = {
   name: 'rbac'
   params: {
-    storageAccountId: storage.outputs.id
+    storageAccountName: storage.outputs.nameOut
     principalId: app.outputs.principalId
   }
 }
 
 output webAppHostname string = app.outputs.defaultHostname
-output apiAppClientId string = aadApi.outputs.apiClientId
-output consumerAppClientId string = aadConsumer.outputs.consumerClientId

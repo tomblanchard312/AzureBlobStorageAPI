@@ -1,4 +1,5 @@
-// Module for provisioning Azure App Service with Managed Identityparam appName string
+// Module for provisioning Azure App Service with Managed Identity
+param appName string
 param location string = resourceGroup().location
 param skuName string = 'P1v3'
 param skuTier string = 'PremiumV3'

@@ -1,8 +1,7 @@
 // Module for provisioning Private DNS Zone for Blob Storage
-param location string = resourceGroup().location
 param vnetId string
 
-var zoneName = 'privatelink.blob.core.windows.net'
+var zoneName = 'privatelink.blob.${environment().suffixes.storage}'
 
 resource zone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: zoneName
@@ -10,8 +9,8 @@ resource zone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
 }
 
 resource vnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
-  name: '${zone.name}/${uniqueString(vnetId)}-link'
-  location: 'global'
+  parent: zone
+  name: '${uniqueString(vnetId)}-link'
   properties: {
     virtualNetwork: {
       id: vnetId

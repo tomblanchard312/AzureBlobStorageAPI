@@ -5,7 +5,7 @@
   "parameters": {
     "appName": { "value": "netcore-blob-api-dev" },
     "storageAccountName": { "value": "stnetcoreblobdev01" },
-    "apiAppRegistrationName": { "value": "netcore-blob-api-dev-aad" },
-    "consumerAppRegistrationName": { "value": "netcore-blob-api-dev-client" }
+    "apiClientId": { "value": "<api-client-id>" },
+    "apiAudience": { "value": "api://<api-client-id>" }
   }
 }

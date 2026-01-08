@@ -27,7 +27,8 @@ resource pe 'Microsoft.Network/privateEndpoints@2023-09-01' = {
 }
 
 resource dnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-09-01' = {
-  name: '${pe.name}/default'
+  parent: pe
+  name: 'default'
   properties: {
     privateDnsZoneConfigs: [
       {
