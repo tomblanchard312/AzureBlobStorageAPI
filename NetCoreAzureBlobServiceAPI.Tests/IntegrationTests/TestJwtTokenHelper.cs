@@ -31,6 +31,9 @@ public static class TestJwtTokenHelper
         {
             new Claim("oid", oid),
             new Claim("scp", scope),
+            // Add common alternative claim types to match middleware mappings
+            new Claim("scope", scope),
+            new Claim("http://schemas.microsoft.com/identity/claims/scope", scope)
         };
 
         var now = DateTime.UtcNow;

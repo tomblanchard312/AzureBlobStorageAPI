@@ -25,10 +25,21 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Configuration validation
-string accountUri = builder.Configuration["BlobStorage:AccountUri"] ?? throw new InvalidOperationException("Blob Storage account URI is not configured.");
+// Prefer explicit environment variable (helps tests injecting values early),
+// fall back to configured values.
+var accountUriStr = Environment.GetEnvironmentVariable("BlobStorage__AccountUri") ?? builder.Configuration["BlobStorage:AccountUri"];
+if (string.IsNullOrWhiteSpace(accountUriStr))
+{
+    throw new InvalidOperationException("Blob Storage account URI is not configured. Set 'BlobStorage:AccountUri' in configuration.");
+}
+
+if (!Uri.TryCreate(accountUriStr, UriKind.Absolute, out var accountUri) || (accountUri.Scheme != Uri.UriSchemeHttps && accountUri.Scheme != Uri.UriSchemeHttp))
+{
+    throw new InvalidOperationException($"Blob Storage account URI '{accountUriStr}' is not a valid absolute URI.");
+}
 
 var credential = new DefaultAzureCredential();
-var blobServiceClient = new BlobServiceClient(new Uri(accountUri), credential);
+var blobServiceClient = new BlobServiceClient(accountUri, credential);
 
 builder.Services.AddSingleton(blobServiceClient);
 
@@ -37,7 +48,7 @@ builder.Services.AddSingleton<IBlobStorageRepository, BlobStorageRepository>();
 
 // Add health checks
 builder.Services.AddHealthChecks()
-    .AddAzureBlobStorage(new Uri(accountUri), credential, name: "azureblob");
+    .AddAzureBlobStorage(accountUri, credential, name: "azureblob");
 
 builder.Services.AddLogging(config =>
 {

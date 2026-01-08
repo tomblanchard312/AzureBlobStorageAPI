@@ -1,20 +1,19 @@
 name: Infra validate
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
     paths:
       - 'infra/**'
-      - 'infra/modules/**'
-      - 'pipelines/azure-pipelines-infra.yml'
+      - '.github/workflows/infra-validate.yml'
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
     paths:
       - 'infra/**'
-      - 'infra/modules/**'
-      - 'pipelines/azure-pipelines-infra.yml'
 
 jobs:
   validate:
@@ -22,6 +21,7 @@ jobs:
     env:
       RESOURCE_GROUP_NAME: YOUR-RG-NAME
       LOCATION: westeurope
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,7 +39,6 @@ jobs:
             set -euo pipefail
             az bicep version
             az bicep build --file infra/main.bicep
-            # Lint (az bicep lint exists in newer CLI versions)
             az bicep lint --file infra/main.bicep || true
 
       - name: ARM validate
@@ -49,7 +48,7 @@ jobs:
           inlineScript: |
             set -euo pipefail
             az deployment group validate \
-              --resource-group "${{ env.RESOURCE_GROUP_NAME }}" \
+              --resource-group "${RESOURCE_GROUP_NAME}" \
               --template-file infra/main.bicep \
               --parameters infra/main.parameters.json
 
@@ -60,6 +59,6 @@ jobs:
           inlineScript: |
             set -euo pipefail
             az deployment group what-if \
-              --resource-group "${{ env.RESOURCE_GROUP_NAME }}" \
+              --resource-group "${RESOURCE_GROUP_NAME}" \
               --template-file infra/main.bicep \
               --parameters infra/main.parameters.json

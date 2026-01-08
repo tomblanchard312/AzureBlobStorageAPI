@@ -1,91 +1,69 @@
 name: CI
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [ main ]
+    paths:
+      - '**/*.cs'
+      - '**/*.csproj'
+      - '**/*.sln'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - '**/*.cs'
+      - '**/*.csproj'
+      - '**/*.sln'
 
 jobs:
-  build-test-format:
+  unit-tests:
+    name: Unit Tests (matrix)
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
     strategy:
       fail-fast: true
       matrix:
         os: [ ubuntu-latest, windows-latest ]
         dotnet: [ 8.0.x ]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ matrix.dotnet }}
 
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
 
-      - name: Restore
-        run: dotnet restore NetCoreAzureBlobServiceAPI.sln
+      - run: dotnet restore NetCoreAzureBlobServiceAPI.sln
+      - run: dotnet format NetCoreAzureBlobServiceAPI.sln --verify-no-changes
+      - run: dotnet build NetCoreAzureBlobServiceAPI.sln --no-restore --configuration Release
 
-      - name: Install dotnet-format
-        run: dotnet tool install -g dotnet-format
+      - run: dotnet test NetCoreAzureBlobServiceAPI.Tests/NetCoreAzureBlobServiceAPI.Tests.csproj \
+          --no-build --configuration Release \
+          --filter "Category!=Integration" \
+          --collect:"XPlat Code Coverage"
 
-      - name: Add dotnet tools to PATH
-        run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
 
-      - name: Install ReportGenerator
-        run: dotnet tool install -g dotnet-reportgenerator-globaltool
-
-      - name: Format (verify only)
-        run: dotnet format NetCoreAzureBlobServiceAPI.sln --verify-no-changes
-
-      - name: Build
-        run: dotnet build NetCoreAzureBlobServiceAPI.sln --no-restore --configuration Release
-
-      - name: Test with Coverage
-        run: dotnet test NetCoreAzureBlobServiceAPI.Tests/NetCoreAzureBlobServiceAPI.Tests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
-
-      - name: Upload coverage to Codecov
-        if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@v4
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          files: NetCoreAzureBlobServiceAPI.Tests/TestResults/**/coverage.cobertura.xml
-          flags: unittests
-          fail_ci_if_error: true
+          dotnet-version: 8.0.x
 
-
-      - name: Generate Coverage Report
-        run: |
-          reportgenerator \
-            -reports:"NetCoreAzureBlobServiceAPI.Tests/TestResults/**/coverage.cobertura.xml" \
-            -targetdir:"NetCoreAzureBlobServiceAPI.Tests/TestResults/CoverageReport" \
-            -reporttypes:"TextSummary;Html"
-
-      - name: Append Coverage Summary
-        run: |
-          if [ -f NetCoreAzureBlobServiceAPI.Tests/TestResults/CoverageReport/Summary.txt ]; then
-            echo "## Code Coverage" >> $GITHUB_STEP_SUMMARY
-            cat NetCoreAzureBlobServiceAPI.Tests/TestResults/CoverageReport/Summary.txt >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Publish Test Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-${{ matrix.os }}-${{ matrix.dotnet }}-${{ github.run_id }}
-          path: |
-            NetCoreAzureBlobServiceAPI.Tests/TestResults/**/*.trx
-            NetCoreAzureBlobServiceAPI.Tests/TestResults/**/coverage.cobertura.xml
-            NetCoreAzureBlobServiceAPI.Tests/TestResults/CoverageReport/**
+      - run: dotnet restore NetCoreAzureBlobServiceAPI.sln
+      - run: dotnet build NetCoreAzureBlobServiceAPI.sln --no-restore --configuration Release
+      - run: dotnet test NetCoreAzureBlobServiceAPI.Tests/NetCoreAzureBlobServiceAPI.Tests.csproj \
+          --no-build --configuration Release \
+          --filter "Category=Integration"
+          --logger "trx;LogFileName=TestResults.trx"
