@@ -64,7 +64,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 options.DefaultAuthenticateScheme = "Test";
                 options.DefaultChallengeScheme = "Test";
             }).AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, TestAuthHandler>(
-                "Test", options => { });
+                "Test", options => { options.TimeProvider = System.TimeProvider.System; });
         });
     }
 
@@ -73,9 +73,16 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         public TestAuthHandler(Microsoft.Extensions.Options.IOptionsMonitor<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions> options,
             Microsoft.Extensions.Logging.ILoggerFactory logger,
             System.Text.Encodings.Web.UrlEncoder encoder,
-            Microsoft.AspNetCore.Authentication.ISystemClock clock)
-            : base(options, logger, encoder, clock)
+            System.TimeProvider timeProvider)
+            : base(options, logger, encoder, new TimeProviderClock(timeProvider))
         {
+        }
+
+        private sealed class TimeProviderClock : Microsoft.AspNetCore.Authentication.ISystemClock
+        {
+            private readonly System.TimeProvider _tp;
+            public TimeProviderClock(System.TimeProvider tp) => _tp = tp;
+            public DateTimeOffset UtcNow => _tp.GetUtcNow();
         }
 
         protected override Task<Microsoft.AspNetCore.Authentication.AuthenticateResult> HandleAuthenticateAsync()
@@ -83,7 +90,9 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             var claims = new[]
             {
                 new System.Security.Claims.Claim("oid", "IntegrationUser"),
-                new System.Security.Claims.Claim("scp", "Files.Manage")
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "IntegrationUser"),
+                new System.Security.Claims.Claim("scp", "Files.Manage"),
+                new System.Security.Claims.Claim("scope", "Files.Manage")
             };
 
             var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
