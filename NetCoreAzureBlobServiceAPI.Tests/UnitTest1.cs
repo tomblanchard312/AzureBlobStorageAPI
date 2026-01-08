@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NetCoreAzureBlobServiceAPI.Interfaces;
@@ -10,75 +11,37 @@ namespace NetCoreAzureBlobServiceAPI.Tests;
 public class FileManagementServiceTests
 {
     private readonly Mock<IBlobStorageRepository> _mockBlobRepository;
-    private readonly Mock<IClientValidationService> _mockClientValidation;
     private readonly Mock<ILogger<FileManagementService>> _mockLogger;
     private readonly FileManagementService _service;
 
     public FileManagementServiceTests()
     {
         _mockBlobRepository = new Mock<IBlobStorageRepository>();
-        _mockClientValidation = new Mock<IClientValidationService>();
         _mockLogger = new Mock<ILogger<FileManagementService>>();
-        _service = new FileManagementService(_mockBlobRepository.Object, _mockClientValidation.Object, _mockLogger.Object);
+        _service = new FileManagementService(_mockBlobRepository.Object, _mockLogger.Object);
     }
 
     [Fact]
-    public async Task UploadFileAsync_WithValidCredentials_UploadsFile()
+    public async Task UploadFileAsync_WithNullFile_ThrowsInvalidFileException()
     {
         // Arrange
-        var mockFile = CreateMockFormFile("test.txt", "text/plain", "test content");
-        var clientId = "testClient";
-        var clientSecret = "testSecret";
-        var expectedUri = "https://test.blob.core.windows.net/testclient-container/blob.txt";
-
-        _mockClientValidation.Setup(x => x.ValidateClient(clientId, clientSecret)).Returns(true);
-        _mockBlobRepository.Setup(x => x.UploadBlobAsync(It.IsAny<IFormFile>(), It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync(expectedUri);
-
-        // Act
-        var result = await _service.UploadFileAsync(mockFile, clientId, clientSecret);
-
-        // Assert
-        Assert.Equal(expectedUri, result);
-        _mockBlobRepository.Verify(x => x.UploadBlobAsync(mockFile, "testclient-container", It.IsAny<string>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task UploadFileAsync_WithInvalidCredentials_ThrowsUnauthorizedException()
-    {
-        // Arrange
-        var mockFile = CreateMockFormFile("test.txt", "text/plain", "test content");
-        _mockClientValidation.Setup(x => x.ValidateClient(It.IsAny<string>(), It.IsAny<string>())).Returns(false);
+        var user = CreateUserPrincipal("TestUser");
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.UploadFileAsync(mockFile, "bad", "bad"));
-        Assert.Equal("Invalid client credentials.", ex.Message);
-    }
-
-    [Fact]
-    public async Task UploadFileAsync_WithNullFile_ThrowsArgumentException()
-    {
-        // Arrange
-        _mockClientValidation.Setup(x => x.ValidateClient(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidFileException>(() =>
-            _service.UploadFileAsync(null!, "client", "secret"));
+        var ex = await Assert.ThrowsAsync<InvalidFileException>(() => _service.UploadFileAsync(null!, user));
         Assert.Equal("File is empty or null.", ex.Message);
     }
 
     [Fact]
-    public async Task UploadFileAsync_WithInvalidExtension_ThrowsArgumentException()
+    public async Task UploadFileAsync_WithInvalidExtension_ThrowsInvalidFileException()
     {
         // Arrange
-        var mockFile = CreateMockFormFile("test.exe", "application/octet-stream", "test content");
-        _mockClientValidation.Setup(x => x.ValidateClient(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
+        var mockFile = CreateMockFormFile("test.exe", "application/octet-stream", "content");
+        var user = CreateUserPrincipal("UserX");
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidFileException>(() =>
-            _service.UploadFileAsync(mockFile, "client", "secret"));
-        Assert.Contains("not permitted", ex.Message);
+        var ex = await Assert.ThrowsAsync<InvalidFileException>(() => _service.UploadFileAsync(mockFile, user));
+        Assert.Contains("not permitted", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
@@ -88,86 +51,63 @@ public class FileManagementServiceTests
     [InlineData(".xml")]
     [InlineData(".xls")]
     [InlineData(".xlsx")]
-    public async Task UploadFileAsync_WithPermittedExtensions_Succeeds(string extension)
+    public async Task UploadFileAsync_WithPermittedExtensions_CallsRepository(string extension)
     {
         // Arrange
-        var mockFile = CreateMockFormFile($"test{extension}", "application/octet-stream", "test content");
-        _mockClientValidation.Setup(x => x.ValidateClient(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
+        var mockFile = CreateMockFormFile($"test{extension}", "application/octet-stream", "content");
+        var user = CreateUserPrincipal("SomeUserId");
+        var expectedUri = "https://example.blob.core.windows.net/container/blob";
+
         _mockBlobRepository.Setup(x => x.UploadBlobAsync(It.IsAny<IFormFile>(), It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync("https://test.blob.core.windows.net/test.blob");
+            .ReturnsAsync(expectedUri);
 
         // Act
-        var result = await _service.UploadFileAsync(mockFile, "client", "secret");
+        var result = await _service.UploadFileAsync(mockFile, user);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.NotEmpty(result);
+        Assert.Equal(expectedUri, result);
+        var expectedContainer = "someuserid-container";
+        _mockBlobRepository.Verify(x => x.UploadBlobAsync(mockFile, expectedContainer, It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
-    public async Task ListBlobsAsync_WithValidCredentials_ReturnsBlobs()
+    public async Task ListBlobsAsync_UsesContainerName_FromClaims()
     {
         // Arrange
-        var clientId = "testClient";
-        var clientSecret = "testSecret";
-        var expectedBlobs = new List<Models.BlobInfo>
-        {
-            new() { Name = "blob1.txt", Url = "https://test.com/blob1.txt" },
-            new() { Name = "blob2.txt", Url = "https://test.com/blob2.txt" }
-        };
-
-        _mockClientValidation.Setup(x => x.ValidateClient(clientId, clientSecret)).Returns(true);
-        _mockBlobRepository.Setup(x => x.ListBlobsAsync("testclient-container")).ReturnsAsync(expectedBlobs);
+        var user = CreateUserPrincipal("ListUser");
+        var expected = new List<Models.BlobInfo> { new() { Name = "a.txt", Url = "u" } };
+        _mockBlobRepository.Setup(x => x.ListBlobsAsync("listuser-container")).ReturnsAsync(expected);
 
         // Act
-        var result = await _service.ListBlobsAsync(clientId, clientSecret);
+        var result = await _service.ListBlobsAsync(user);
 
         // Assert
-        var resultList = result.ToList();
-        Assert.Equal(2, resultList.Count);
-        Assert.Equal("blob1.txt", resultList[0].Name);
-        Assert.Equal("blob2.txt", resultList[1].Name);
+        Assert.Single(result);
+        _mockBlobRepository.Verify(x => x.ListBlobsAsync("listuser-container"), Times.Once);
     }
 
     [Fact]
-    public async Task ListBlobsAsync_WithInvalidCredentials_ThrowsUnauthorizedException()
+    public async Task DownloadBlobAsync_UsesContainerName_FromClaims()
     {
         // Arrange
-        _mockClientValidation.Setup(x => x.ValidateClient(It.IsAny<string>(), It.IsAny<string>())).Returns(false);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.ListBlobsAsync("bad", "bad"));
-    }
-
-    [Fact]
-    public async Task DownloadBlobAsync_WithValidCredentials_ReturnsStream()
-    {
-        // Arrange
-        var clientId = "testClient";
-        var clientSecret = "testSecret";
-        var blobName = "test.txt";
-        var expectedStream = new MemoryStream();
-
-        _mockClientValidation.Setup(x => x.ValidateClient(clientId, clientSecret)).Returns(true);
-        _mockBlobRepository.Setup(x => x.DownloadBlobAsync("testclient-container", blobName)).ReturnsAsync(expectedStream);
+        var user = CreateUserPrincipal("DLUser");
+        var blobName = "file.txt";
+        var stream = new MemoryStream();
+        _mockBlobRepository.Setup(x => x.DownloadBlobAsync("dluser-container", blobName)).ReturnsAsync(stream);
 
         // Act
-        var result = await _service.DownloadBlobAsync(clientId, clientSecret, blobName);
+        var result = await _service.DownloadBlobAsync(blobName, user);
 
         // Assert
-        Assert.Same(expectedStream, result);
+        Assert.Same(stream, result);
+        _mockBlobRepository.Verify(x => x.DownloadBlobAsync("dluser-container", blobName), Times.Once);
     }
 
-    [Fact]
-    public async Task DownloadBlobAsync_WithInvalidCredentials_ThrowsUnauthorizedException()
+    private static ClaimsPrincipal CreateUserPrincipal(string oid)
     {
-        // Arrange
-        _mockClientValidation.Setup(x => x.ValidateClient(It.IsAny<string>(), It.IsAny<string>())).Returns(false);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.DownloadBlobAsync("bad", "bad", "blob.txt"));
+        var claims = new[] { new Claim("oid", oid) };
+        var identity = new ClaimsIdentity(claims, "test");
+        return new ClaimsPrincipal(identity);
     }
 
     private static IFormFile CreateMockFormFile(string fileName, string contentType, string content)
