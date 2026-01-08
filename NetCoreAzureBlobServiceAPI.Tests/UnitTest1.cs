@@ -71,6 +71,26 @@ public class FileManagementServiceTests
     }
 
     [Fact]
+    public async Task UploadFileAsync_WithTooLargeFile_ThrowsInvalidFileException()
+    {
+        // Arrange
+        // Create a file larger than the MaxFileSizeBytes (100 MB)
+        var largeSize = (100L * 1024 * 1024) + 1; // 100MB + 1 byte
+        var stream = new MemoryStream(new byte[0]);
+        // Create a stream that reports the large length
+        var mockFile = new Mock<IFormFile>();
+        mockFile.SetupGet(f => f.Length).Returns(largeSize);
+        mockFile.SetupGet(f => f.FileName).Returns("bigfile.txt");
+        mockFile.SetupGet(f => f.ContentType).Returns("text/plain");
+
+        var user = CreateUserPrincipal("BigUser");
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidFileException>(() => _service.UploadFileAsync(mockFile.Object, user));
+        Assert.Contains("exceeds maximum allowed size", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task ListBlobsAsync_UsesContainerName_FromClaims()
     {
         // Arrange
