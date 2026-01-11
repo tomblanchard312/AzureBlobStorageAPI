@@ -87,7 +87,12 @@ namespace NetCoreAzureBlobServiceAPI.Services
         public async Task<Stream> DownloadBlobAsync(string blobName, ClaimsPrincipal user)
         {
             var oid = user.FindFirst("oid")?.Value ?? "unknown";
-            _logger.LogInformation("Download request received for blob {BlobName} by user {UserId}", blobName, oid);
+            // Sanitize blobName for logging to prevent log forging (e.g., newline injection)
+            var safeBlobName = blobName?
+                .Replace("\r", string.Empty)
+                .Replace("\n", string.Empty);
+
+            _logger.LogInformation("Download request received for blob {BlobName} by user {UserId}", safeBlobName, oid);
 
             if (string.IsNullOrWhiteSpace(blobName))
             {
@@ -100,7 +105,7 @@ namespace NetCoreAzureBlobServiceAPI.Services
             try
             {
                 var stream = await _blobStorageRepository.DownloadBlobAsync(containerName, blobName);
-                _logger.LogInformation("Blob {BlobName} downloaded successfully from container {ContainerName}", blobName, containerName);
+                _logger.LogInformation("Blob {BlobName} downloaded successfully from container {ContainerName}", safeBlobName, containerName);
                 return stream;
             }
             catch (BlobNotFoundException)
@@ -109,7 +114,7 @@ namespace NetCoreAzureBlobServiceAPI.Services
             }
             catch (Exception ex) when (ex is not BlobStorageException)
             {
-                _logger.LogError(ex, "Unexpected error downloading blob {BlobName}", blobName);
+                _logger.LogError(ex, "Unexpected error downloading blob {BlobName}", safeBlobName);
                 throw new BlobStorageException($"An error occurred while downloading blob '{blobName}'.", ex);
             }
         }
