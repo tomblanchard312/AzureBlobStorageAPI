@@ -30,16 +30,21 @@ namespace NetCoreAzureBlobServiceAPI.Services
 
         public async Task<Stream> DownloadBlobAsync(string containerName, string blobName)
         {
+            // Sanitize blobName for logging to prevent log forging (e.g., newline injection)
+            var safeBlobName = blobName?
+                .Replace("\r", string.Empty)
+                .Replace("\n", string.Empty);
+
             try
             {
                 var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
                 var blobClient = containerClient.GetBlobClient(blobName);
 
-                _logger.LogDebug("Downloading blob {BlobName} from container {ContainerName}", blobName, containerName);
+                _logger.LogDebug("Downloading blob {BlobName} from container {ContainerName}", safeBlobName, containerName);
 
                 if (!await blobClient.ExistsAsync())
                 {
-                    _logger.LogWarning("Blob {BlobName} not found in container {ContainerName}", blobName, containerName);
+                    _logger.LogWarning("Blob {BlobName} not found in container {ContainerName}", safeBlobName, containerName);
                     throw new BlobNotFoundException(blobName, containerName);
                 }
 
@@ -47,7 +52,7 @@ namespace NetCoreAzureBlobServiceAPI.Services
                 await blobClient.DownloadToAsync(stream);
                 stream.Seek(0, SeekOrigin.Begin);
 
-                _logger.LogDebug("Downloaded {ByteCount} bytes from blob {BlobName}", stream.Length, blobName);
+                _logger.LogDebug("Downloaded {ByteCount} bytes from blob {BlobName}", stream.Length, safeBlobName);
                 return stream;
             }
             catch (BlobNotFoundException)
@@ -56,7 +61,7 @@ namespace NetCoreAzureBlobServiceAPI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading blob {BlobName} from container {ContainerName}", blobName, containerName);
+                _logger.LogError(ex, "Error downloading blob {BlobName} from container {ContainerName}", safeBlobName, containerName);
                 throw new BlobStorageException($"Failed to download blob '{blobName}' from container '{containerName}'.", ex);
             }
         }
