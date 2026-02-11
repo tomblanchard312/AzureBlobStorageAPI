@@ -1,5 +1,7 @@
 # Validate Bicep code only: build and lint. No Azure login or credentials required.
 name: Infra validate
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
