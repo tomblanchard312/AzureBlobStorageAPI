@@ -1,3 +1,4 @@
+# Validate Bicep code only: build and lint. No Azure login or credentials required.
 name: Infra validate
 
 concurrency:
@@ -8,57 +9,29 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'infra/**'
+      - 'NetCoreAzureBlobServiceAPI/infra/**'
       - '.github/workflows/infra-validate.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'infra/**'
+      - 'NetCoreAzureBlobServiceAPI/infra/**'
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-    env:
-      RESOURCE_GROUP_NAME: YOUR-RG-NAME
-      LOCATION: westeurope
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Install Azure CLI and Bicep
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az bicep install
 
       - name: Bicep build and lint
-        uses: azure/cli@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            set -euo pipefail
-            az bicep version
-            az bicep build --file infra/main.bicep
-            az bicep lint --file infra/main.bicep || true
-
-      - name: ARM validate
-        uses: azure/cli@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            set -euo pipefail
-            az deployment group validate \
-              --resource-group "${RESOURCE_GROUP_NAME}" \
-              --template-file infra/main.bicep \
-              --parameters infra/main.parameters.json
-
-      - name: What-if
-        uses: azure/cli@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            set -euo pipefail
-            az deployment group what-if \
-              --resource-group "${RESOURCE_GROUP_NAME}" \
-              --template-file infra/main.bicep \
-              --parameters infra/main.parameters.json
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          az bicep version
+          az bicep build --file NetCoreAzureBlobServiceAPI/infra/main.bicep
+          az bicep lint --file NetCoreAzureBlobServiceAPI/infra/main.bicep || true
