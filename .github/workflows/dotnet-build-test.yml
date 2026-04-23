@@ -21,6 +21,7 @@ on:
       - '**/*.cs'
       - '**/*.csproj'
       - '**/*.sln'
+      - '.github/workflows/dotnet-build-test.yml'
 
 jobs:
   unit-tests:
