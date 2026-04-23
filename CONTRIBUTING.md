@@ -4,7 +4,7 @@ Thanks for considering a contribution! Please follow the guidelines below to hel
 
 ## Ground Rules
 - Be respectful; follow the [Code of Conduct](CODE_OF_CONDUCT.md).
-- For security issues, email **tomblanchard3@outlook.com** (do not open a public issue) — see [SECURITY.md](SECURITY.md).
+- For security issues, email **tomblanchard3@outlook.com** (do not open a public issue).
 
 ## How to Contribute
 1) **Open an issue** for bugs or feature requests before large changes.

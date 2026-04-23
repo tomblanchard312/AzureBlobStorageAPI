@@ -19,14 +19,14 @@ public class FileManagerIntegrationTests : IClassFixture<TestWebApplicationFacto
     }
 
     [Fact]
-    public async Task ListBlobs_WithoutAuth_ReturnsUnauthorized()
+    public async Task ListBlobs_WithoutAuth_InTestHostStillReturnsOk()
     {
         using var client = _factory.CreateClient();
 
         var res = await client.GetAsync("/api/FileManager/list");
 
-        // Test authentication scheme in tests authenticates requests by default,
-        // so unauthenticated requests will be treated as authenticated in this test host.
+        // Test authentication scheme in this host authenticates requests by default,
+        // so unauthenticated requests are treated as authenticated for this fixture.
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
     }
 

@@ -179,4 +179,4 @@ Infrastructure is defined under NetCoreAzureBlobServiceAPI/infra using Bicep.
 
 Run dotnet format and dotnet test before submitting changes.
 
-For security issues see SECURITY.md.
+For security issues, report privately to the maintainers.
