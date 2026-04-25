@@ -49,7 +49,7 @@ jobs:
       - run: dotnet format NetCoreAzureBlobServiceAPI.sln --verify-no-changes
       - run: dotnet build NetCoreAzureBlobServiceAPI.sln --no-restore --configuration Release
 
-      - run: dotnet test NetCoreAzureBlobServiceAPI.sln --no-build --configuration Release --filter "Category!=Integration" --collect:"XPlat Code Coverage"
+      - run: dotnet test NetCoreAzureBlobServiceAPI.Tests/NetCoreAzureBlobServiceAPI.Tests.csproj --no-build --configuration Release --filter "Category!=Integration" --collect "XPlat Code Coverage"
 
   integration-tests:
     name: Integration Tests
@@ -64,7 +64,8 @@ jobs:
 
       - run: dotnet restore NetCoreAzureBlobServiceAPI.sln
       - run: dotnet build NetCoreAzureBlobServiceAPI.sln --no-restore --configuration Release
-      - run: dotnet test NetCoreAzureBlobServiceAPI.Tests/NetCoreAzureBlobServiceAPI.Tests.csproj \
-          --no-build --configuration Release \
-          --filter "Category=Integration" \
-          --logger "trx;LogFileName=TestResults.trx"
+      - run: |
+          dotnet test NetCoreAzureBlobServiceAPI.Tests/NetCoreAzureBlobServiceAPI.Tests.csproj \
+            --no-build --configuration Release \
+            --filter "Category=Integration" \
+            --logger "trx;LogFileName=TestResults.trx"
