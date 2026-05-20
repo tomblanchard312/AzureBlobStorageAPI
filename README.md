@@ -7,12 +7,6 @@
 </p>
 
 <p align="center">
-<a href="https://github.com/tomblanchard312/AzureBlobStorageAPI/actions/workflows/dotnet-build-test.yml">
-  <img src="https://github.com/tomblanchard312/AzureBlobStorageAPI/actions/workflows/dotnet-build-test.yml/badge.svg" alt="CI" />
-</a>
-<a href="https://github.com/tomblanchard312/AzureBlobStorageAPI/actions/workflows/codeql.yml">
-  <img src="https://github.com/tomblanchard312/AzureBlobStorageAPI/actions/workflows/codeql.yml/badge.svg" alt="CodeQL" />
-</a>
 <a href="https://codecov.io/gh/tomblanchard312/AzureBlobStorageAPI">
   <img src="https://codecov.io/gh/tomblanchard312/AzureBlobStorageAPI/branch/main/graph/badge.svg" alt="Coverage" />
 </a>
