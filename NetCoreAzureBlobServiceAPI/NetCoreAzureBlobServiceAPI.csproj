@@ -26,7 +26,7 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.19.2" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.21.0" />
     <Folder Include="Models\" />
   </ItemGroup>
 </Project>
