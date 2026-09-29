@@ -14,9 +14,14 @@ namespace NetCoreAzureBlobServiceAPI.Services
         private readonly string[] _permittedExtensions = [".txt", ".csv", ".xls", ".xlsx", ".json", ".xml"];
         private const long MaxFileSizeBytes = 100 * 1024 * 1024; // 100 MB
 
-        private string GetContainerName(ClaimsPrincipal user)
+        private static string GetContainerName(ClaimsPrincipal user)
         {
-            var oid = user.FindFirst("oid")?.Value ?? "anonymous";
+            var oid = user.FindFirst("oid")?.Value;
+            if (string.IsNullOrWhiteSpace(oid))
+            {
+                throw new UnauthorizedAccessException("The caller's token does not contain the required 'oid' claim.");
+            }
+
             return $"{oid.ToLowerInvariant()}-container";
         }
 

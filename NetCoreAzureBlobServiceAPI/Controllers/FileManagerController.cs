@@ -84,6 +84,11 @@ namespace NetCoreAzureBlobServiceAPI.Controllers
                 _logger.LogWarning(ex, "Unauthorized download attempt");
                 return Unauthorized(new { Error = ex.Message });
             }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid download request");
+                return BadRequest(new { Error = ex.Message });
+            }
             catch (BlobNotFoundException ex)
             {
                 _logger.LogWarning(ex, "Blob not found");

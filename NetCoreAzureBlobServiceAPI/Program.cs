@@ -10,8 +10,16 @@ using Microsoft.Identity.Web;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Azure.Identity;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Match Kestrel's request body size limit to FileManagementService.MaxFileSizeBytes (100 MB),
+// which otherwise gets clamped by Kestrel's much smaller default (~28.6 MB).
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 100 * 1024 * 1024;
+});
 
 // Add services to the container.
 builder.Services.AddControllers();
